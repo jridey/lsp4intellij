@@ -58,6 +58,7 @@ import org.eclipse.lsp4j.jsonrpc.JsonRpcException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.Tuple;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.wso2.lsp4intellij.actions.LSPReferencesAction;
 import org.wso2.lsp4intellij.client.languageserver.ServerOptions;
 import org.wso2.lsp4intellij.client.languageserver.requestmanager.RequestManager;
@@ -66,6 +67,7 @@ import org.wso2.lsp4intellij.contributors.fixes.LSPCodeActionFix;
 import org.wso2.lsp4intellij.contributors.fixes.LSPCommandFix;
 import org.wso2.lsp4intellij.contributors.icon.LSPIconProvider;
 import org.wso2.lsp4intellij.contributors.psi.LSPPsiElement;
+import org.wso2.lsp4intellij.contributors.psi.LSPPsiElementNotNavigatable;
 import org.wso2.lsp4intellij.contributors.rename.LSPRenameProcessor;
 import org.wso2.lsp4intellij.listeners.LSPCaretListenerImpl;
 import org.wso2.lsp4intellij.requests.HoverHandler;
@@ -358,6 +360,35 @@ public class EditorEventManager {
             return null;
         }
         return null;
+    }
+
+    @Nullable
+    public PsiElement definition(int offset) {
+        Position lspPos = DocumentUtils.offsetToLSPPos(editor, offset);
+        Location l = this.requestDefinition(lspPos);
+        if (l == null) {
+            return null;
+        }
+
+        Position start = l.getRange().getStart();
+        Position end = l.getRange().getEnd();
+        String uri = FileUtils.sanitizeURI(l.getUri());
+        VirtualFile file = FileUtils.virtualFileFromURI(uri);
+        Editor curEditor = FileUtils.editorFromUri(uri, project);
+        if (curEditor == null && file != null) {
+            OpenFileDescriptor descriptor = new OpenFileDescriptor(project, file, start.getLine(), start.getCharacter());
+            curEditor = computableWriteAction(
+                    () -> FileEditorManager.getInstance(project).openTextEditor(descriptor, false));
+        }
+        if (curEditor == null) {
+            LOG.warn("Error occurred in LSP definition.");
+            return null;
+        }
+        int logicalStart = DocumentUtils.LSPPosToOffset(curEditor, start);
+        int logicalEnd = DocumentUtils.LSPPosToOffset(curEditor, end);
+        String name = curEditor.getDocument().getText(new TextRange(logicalStart, logicalEnd));
+        return new LSPPsiElementNotNavigatable(name, project, logicalStart, logicalEnd,
+                PsiDocumentManager.getInstance(project).getPsiFile(curEditor.getDocument()));
     }
 
     public Pair<List<PsiElement>, List<VirtualFile>> references(int offset) {
