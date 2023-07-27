@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ * Copyright (c) 2019, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,10 +44,10 @@ import javax.swing.*;
 /**
  * A simple PsiElement for LSP
  */
-public class LSPPsiElementNotNavigatable implements PsiNameIdentifierOwner {
+public class LSPGotoPsiElement implements PsiNameIdentifierOwner, NavigatablePsiElement {
 
     private final Key<KeyFMap> COPYABLE_USER_MAP_KEY = Key.create("COPYABLE_USER_MAP_KEY");
-    private final AtomicFieldUpdater<LSPPsiElementNotNavigatable, KeyFMap> updater = AtomicFieldUpdater.forFieldOfType(LSPPsiElementNotNavigatable.class, KeyFMap.class);
+    private final AtomicFieldUpdater<LSPGotoPsiElement, KeyFMap> updater = AtomicFieldUpdater.forFieldOfType(LSPGotoPsiElement.class, KeyFMap.class);
     private final PsiManager manager;
     private final LSPPsiReference reference;
     private final Project project;
@@ -62,7 +62,7 @@ public class LSPPsiElementNotNavigatable implements PsiNameIdentifierOwner {
      * @param start   The offset in the editor where the element starts
      * @param end     The offset where it ends
      */
-    public LSPPsiElementNotNavigatable(String name, @NotNull Project project, int start, int end, PsiFile file) {
+    public LSPGotoPsiElement(String name, @NotNull Project project, int start, int end, PsiFile file) {
         this.project = project;
         this.name = name;
         this.start = start;
@@ -696,7 +696,7 @@ public class LSPPsiElementNotNavigatable implements PsiNameIdentifierOwner {
             }
 
             public Icon getIcon(boolean unused) {
-                return (unused) ? null : null; //iconProvider.getIcon(LSPPsiElement.this)
+                return null; //iconProvider.getIcon(LSPPsiElement.this)
             }
         };
     }
@@ -706,13 +706,10 @@ public class LSPPsiElementNotNavigatable implements PsiNameIdentifierOwner {
     }
 
     public void navigate(boolean requestFocus) {
-        Editor editor = FileUtils.editorFromPsiFile(getContainingFile());
-        if (editor == null) {
-            OpenFileDescriptor descriptor = new OpenFileDescriptor(getProject(), getContainingFile().getVirtualFile(),
-                    getTextOffset());
-            ApplicationUtils.invokeLater(() -> ApplicationUtils
-                    .writeAction(() -> FileEditorManager.getInstance(getProject()).openTextEditor(descriptor, false)));
-        }
+        OpenFileDescriptor descriptor = new OpenFileDescriptor(getProject(), getContainingFile().getVirtualFile(),
+                getTextOffset());
+        ApplicationUtils.invokeLater(() -> ApplicationUtils
+                .writeAction(() -> FileEditorManager.getInstance(getProject()).openTextEditor(descriptor, false)));
     }
 
     /**
@@ -746,5 +743,21 @@ public class LSPPsiElementNotNavigatable implements PsiNameIdentifierOwner {
      */
     public int getTextOffset() {
         return start;
+    }
+
+    public boolean canNavigateToSource() {
+        return true;
+    }
+
+    public boolean canNavigate() {
+        return true;
+    }
+
+    protected void clearUserData() {
+        setUserMap(KeyFMap.EMPTY_MAP);
+    }
+
+    protected void setUserMap(KeyFMap map) {
+        myUserMap = map;
     }
 }

@@ -47,7 +47,7 @@ class LSPGotoDeclarationHandler implements GotoDeclarationHandler {
         } catch (ProcessCanceledException ignored) {
             // ProcessCanceledException can be ignored.
         } catch (Exception e) {
-            LOG.warn("LSP Completions ended with an error", e);
+            LOG.warn("LSP Goto declaration ended with an error", e);
         }
         return null;
     }

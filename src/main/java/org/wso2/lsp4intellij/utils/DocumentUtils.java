@@ -21,6 +21,7 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.LogicalPosition;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.psi.PsiFile;
 import com.intellij.util.DocumentUtil;
 import org.eclipse.lsp4j.InsertReplaceEdit;
 import org.eclipse.lsp4j.Position;
@@ -128,6 +129,30 @@ public class DocumentUtils {
             }
             return Math.min(max(offset, 0), docLength);
 
+        });
+    }
+
+    /**
+     * Transforms an LSP position to an editor offset
+     *
+     * @param file   PSI file
+     * @param pos    The LSPPos
+     * @return The offset
+     */
+    public static int LSPPosToOffset(PsiFile file, Position pos) {
+        return computableReadAction(() -> {
+            // lsp and intellij start lines/columns zero-based
+            String[] lines = StringUtil.splitByLinesKeepSeparators(file.getText());
+
+            int offset = 0;
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                if (i == pos.getLine()) {
+                    return offset + pos.getCharacter();
+                }
+                offset += line.length();
+            }
+            return null;
         });
     }
 
